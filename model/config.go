@@ -2199,6 +2199,12 @@ type ImageProxySettings struct {
 	RemoteImageProxyOptions *string
 }
 
+type TankerSettings struct {
+	TrustchainId             string
+	TrustchainPrivateKey     string
+	TrustchainEmailAuthToken string
+}
+
 func (ips *ImageProxySettings) SetDefaults(ss ServiceSettings) {
 	if ips.Enable == nil {
 		if ss.DEPRECATED_DO_NOT_USE_ImageProxyType == nil || *ss.DEPRECATED_DO_NOT_USE_ImageProxyType == "" {
@@ -2268,6 +2274,7 @@ type Config struct {
 	PluginSettings        PluginSettings
 	DisplaySettings       DisplaySettings
 	ImageProxySettings    ImageProxySettings
+	TankerSettings        TankerSettings
 }
 
 func (o *Config) Clone() *Config {

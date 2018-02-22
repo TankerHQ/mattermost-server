@@ -73,6 +73,8 @@ type Routes struct {
 	OAuthApps *mux.Router // 'api/v4/oauth/apps'
 	OAuthApp  *mux.Router // 'api/v4/oauth/apps/{app_id:[A-Za-z0-9]+}'
 
+	TankerIdentity *mux.Router // 'api/v4/tankeridentity'
+
 	OpenGraph *mux.Router // 'api/v4/opengraph'
 
 	SAML       *mux.Router // 'api/v4/saml'
@@ -185,6 +187,8 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.OAuthApps = api.BaseRoutes.OAuth.PathPrefix("/apps").Subrouter()
 	api.BaseRoutes.OAuthApp = api.BaseRoutes.OAuthApps.PathPrefix("/{app_id:[A-Za-z0-9]+}").Subrouter()
 
+	api.BaseRoutes.TankerIdentity = api.BaseRoutes.ApiRoot.PathPrefix("/tankeridentity").Subrouter()
+
 	api.BaseRoutes.Compliance = api.BaseRoutes.ApiRoot.PathPrefix("/compliance").Subrouter()
 	api.BaseRoutes.Cluster = api.BaseRoutes.ApiRoot.PathPrefix("/cluster").Subrouter()
 	api.BaseRoutes.LDAP = api.BaseRoutes.ApiRoot.PathPrefix("/ldap").Subrouter()
@@ -238,6 +242,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitWebSocket()
 	api.InitEmoji()
 	api.InitOAuth()
+	api.InitTankerIdentity()
 	api.InitReaction()
 	api.InitOpenGraph()
 	api.InitPlugin()
