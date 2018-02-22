@@ -2158,6 +2158,12 @@ type ImageProxySettings struct {
 	RemoteImageProxyOptions *string
 }
 
+type TankerSettings struct {
+	TrustchainId             string
+	TrustchainPrivateKey     string
+	TrustchainEmailAuthToken string
+}
+
 func (ips *ImageProxySettings) SetDefaults(ss ServiceSettings) {
 	if ips.Enable == nil {
 		ips.Enable = NewBool(true)
@@ -2224,6 +2230,7 @@ type Config struct {
 	DisplaySettings       DisplaySettings
 	TimezoneSettings      TimezoneSettings
 	ImageProxySettings    ImageProxySettings
+	TankerSettings        TankerSettings
 }
 
 func (o *Config) Clone() *Config {
