@@ -323,8 +323,8 @@ func (a *App) WaitForChannelMembership(channelId string, userId string) {
 	mlog.Error(fmt.Sprintf("WaitForChannelMembership giving up channelId=%v userId=%v", channelId, userId), mlog.String("user_id", userId))
 }
 
-func (a *App) CreateGroupChannel(userIds []string, creatorId string) (*model.Channel, *model.AppError) {
-	channel, err := a.createGroupChannel(userIds, creatorId)
+func (a *App) CreateGroupChannel(userIds []string, tankerGroupId string, creatorId string) (*model.Channel, *model.AppError) {
+	channel, err := a.createGroupChannel(userIds, tankerGroupId, creatorId)
 	if err != nil {
 		if err.Id == store.CHANNEL_EXISTS_ERROR {
 			return channel, nil
@@ -347,7 +347,7 @@ func (a *App) CreateGroupChannel(userIds []string, creatorId string) (*model.Cha
 	return channel, nil
 }
 
-func (a *App) createGroupChannel(userIds []string, creatorId string) (*model.Channel, *model.AppError) {
+func (a *App) createGroupChannel(userIds []string, tankerGroupId string, creatorId string) (*model.Channel, *model.AppError) {
 	if len(userIds) > model.CHANNEL_GROUP_MAX_USERS || len(userIds) < model.CHANNEL_GROUP_MIN_USERS {
 		return nil, model.NewAppError("CreateGroupChannel", "api.channel.create_group.bad_size.app_error", nil, "", http.StatusBadRequest)
 	}
@@ -363,9 +363,10 @@ func (a *App) createGroupChannel(userIds []string, creatorId string) (*model.Cha
 	}
 
 	group := &model.Channel{
-		Name:        model.GetGroupNameFromUserIds(userIds),
-		DisplayName: model.GetGroupDisplayNameFromUsers(users, true),
-		Type:        model.CHANNEL_GROUP,
+		Name:          model.GetGroupNameFromUserIds(userIds),
+		DisplayName:   model.GetGroupDisplayNameFromUsers(users, true),
+		Type:          model.CHANNEL_GROUP,
+		TankerGroupId: tankerGroupId,
 	}
 
 	result = <-a.Srv.Store.Channel().Save(group, *a.Config().TeamSettings.MaxChannelsPerTeam)
