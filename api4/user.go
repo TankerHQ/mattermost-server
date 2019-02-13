@@ -1099,15 +1099,15 @@ func resetPassword(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	c.LogAudit("attempt - token=" + token)
 
-	if err := c.App.ResetPasswordFromToken(token, newPassword); err != nil {
+	userToken, err := c.App.ResetPasswordFromToken(token, newPassword)
+	if err != nil {
 		c.LogAudit("fail - token=" + token)
 		c.Err = err
 		return
 	}
 
 	c.LogAudit("success - token=" + token)
-
-	ReturnStatusOK(w)
+	w.Write([]byte(userToken.ToJson()))
 }
 
 func sendPasswordReset(c *Context, w http.ResponseWriter, r *http.Request) {

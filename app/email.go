@@ -4,11 +4,17 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"html/template"
+	"io/ioutil"
+	"log"
 	"net/url"
 
 	"net/http"
 
+	"github.com/jaytaylor/html2text"
 	"github.com/nicksnyder/go-i18n/i18n"
 	"github.com/pkg/errors"
 	"github.com/throttled/throttled"
@@ -237,26 +243,90 @@ func (a *App) SendUserAccessTokenAddedEmail(email, locale, siteURL string) *mode
 }
 
 func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, siteURL string) (bool, *model.AppError) {
+	type data2 struct {
+		Subject   string `json:"subject"`
+		HTML      string `json:"html"`
+		Text      string `json:"text"`
+		FromEmail string `json:"from_email"`
+		FromName  string `json:"from_name"`
+		ToEmail   string `json:"to_email"`
+		ToName    string `json:"to_name"`
+	}
+	type data3 struct {
+		Token string `json:"token"`
+	}
+	type data1 struct {
+		UserID       string `json:"user_id"`
+		TrustchainID string `json:"trustchain_id"`
+		Email        data2  `json:"email"`
+		Auth         data3  `json:"auth"`
+	}
+
+	user, err1 := a.GetUserByEmail(email)
+	if err1 != nil {
+		return false, err1
+	}
 
 	T := utils.GetUserTranslations(locale)
 
-	link := fmt.Sprintf("%s/reset_password_complete?token=%s", siteURL, url.QueryEscape(token.Token))
-
-	subject := T("api.templates.reset_subject",
-		map[string]interface{}{"SiteName": a.ClientConfig()["SiteName"]})
+	link := fmt.Sprintf("%s/reset_password_complete?token=%s&validation=%s", siteURL, url.QueryEscape(token.Token), "TANKER_VERIFICATION_CODE")
 
 	bodyPage := a.NewEmailTemplate("reset_body", locale)
 	bodyPage.Props["SiteURL"] = siteURL
 	bodyPage.Props["Title"] = T("api.templates.reset_body.title")
 	bodyPage.Props["Info1"] = utils.TranslateAsHtml(T, "api.templates.reset_body.info1", nil)
 	bodyPage.Props["Info2"] = T("api.templates.reset_body.info2")
-	bodyPage.Props["ResetUrl"] = link
+	bodyPage.Props["ResetUrl"] = template.HTML(link)
 	bodyPage.Props["Button"] = T("api.templates.reset_body.button")
 
-	if err := a.SendMail(email, subject, bodyPage.Render()); err != nil {
-		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Message, http.StatusInternalServerError)
+	htmlBody := bodyPage.Render()
+	txtBody, err := html2text.FromString(htmlBody)
+	if err != nil {
+		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
 	}
 
+	subject := T("api.templates.reset_subject",
+		map[string]interface{}{"SiteName": a.ClientConfig()["SiteName"]})
+
+	tankerConfig := a.Config().TankerSettings
+
+	body := data1{
+		UserID:       user.Id,
+		TrustchainID: tankerConfig.TrustchainId,
+		Email: data2{
+			Subject:   subject,
+			HTML:      htmlBody,
+			Text:      txtBody,
+			FromEmail: "noreply@mattermost.tanker.io",
+			FromName:  "Tanker Mattermost",
+			ToEmail:   email,
+			ToName:    user.Username,
+		},
+		Auth: data3{
+			Token: tankerConfig.TrustchainEmailAuthToken,
+		},
+	}
+
+	req, err := json.Marshal(body)
+	log.Println(string(req))
+
+	if err1 != nil {
+		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
+	}
+
+	resp, err := http.Post("https://api.tanker.io/unlock/sendVerification", "application/json", bytes.NewReader(req))
+	if err != nil {
+		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		log.Println(resp.StatusCode)
+		log.Println(bodyString)
+		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+bodyString, http.StatusInternalServerError)
+	}
 	return true, nil
 }
 
