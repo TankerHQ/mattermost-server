@@ -17,6 +17,7 @@ import (
 
 const (
 	VERSION_5_9_0            = "5.9.0"
+	VERSION_5_8_1            = "5.8.1"
 	VERSION_5_8_0            = "5.8.0"
 	VERSION_5_7_0            = "5.7.0"
 	VERSION_5_6_0            = "5.6.0"
@@ -96,6 +97,7 @@ func UpgradeDatabase(sqlStore SqlStore) {
 	UpgradeDatabaseToVersion56(sqlStore)
 	UpgradeDatabaseToVersion57(sqlStore)
 	UpgradeDatabaseToVersion58(sqlStore)
+	UpgradeDatabaseToVersion581(sqlStore)
 	UpgradeDatabaseToVersion59(sqlStore)
 
 	// If the SchemaVersion is empty this this is the first time it has ran
@@ -564,6 +566,13 @@ func UpgradeDatabaseToVersion58(sqlStore SqlStore) {
 		sqlStore.AlterColumnDefaultIfExists("PluginKeyValueStore", "ExpireAt", model.NewString("NULL"), model.NewString("NULL"))
 
 		saveSchemaVersion(sqlStore, VERSION_5_8_0)
+	}
+}
+
+func UpgradeDatabaseToVersion581(sqlStore SqlStore) {
+	if shouldPerformUpgrade(sqlStore, VERSION_5_8_0, VERSION_5_8_1) {
+		sqlStore.CreateColumnIfNotExists("Channels", "TankerGroupId", "varchar(64)", "varchar(64)", "")
+		saveSchemaVersion(sqlStore, VERSION_5_8_1)
 	}
 }
 

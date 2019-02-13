@@ -4,6 +4,7 @@
 package api4
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/mattermost/mattermost-server/mlog"
@@ -158,6 +159,10 @@ func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	if len(channel.Type) > 0 {
 		oldChannel.Type = channel.Type
+	}
+
+	if len(channel.TankerGroupId) > 0 {
+		oldChannel.TankerGroupId = channel.TankerGroupId
 	}
 
 	if _, err := c.App.UpdateChannel(oldChannel); err != nil {
@@ -349,15 +354,24 @@ func createDirectChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
-	userIds := model.ArrayFromJson(r.Body)
+	type channelData struct {
+		userIds       []string
+		tankerGroupId string
+	}
 
-	if len(userIds) == 0 {
+	var data *channelData
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		c.SetInvalidParam("body")
+		return
+	}
+
+	if len(data.userIds) == 0 {
 		c.SetInvalidParam("user_ids")
 		return
 	}
 
 	found := false
-	for _, id := range userIds {
+	for _, id := range data.userIds {
 		if len(id) != 26 {
 			c.SetInvalidParam("user_id")
 			return
@@ -368,7 +382,7 @@ func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !found {
-		userIds = append(userIds, c.App.Session.UserId)
+		data.userIds = append(data.userIds, c.App.Session.UserId)
 	}
 
 	if !c.App.SessionHasPermissionTo(c.App.Session, model.PERMISSION_CREATE_GROUP_CHANNEL) {
@@ -376,7 +390,7 @@ func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupChannel, err := c.App.CreateGroupChannel(userIds, c.App.Session.UserId)
+	groupChannel, err := c.App.CreateGroupChannel(data.userIds, data.tankerGroupId, c.App.Session.UserId)
 	if err != nil {
 		c.Err = err
 		return

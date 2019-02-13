@@ -1807,7 +1807,16 @@ func (c *Client4) CreateDirectChannel(userId1, userId2 string) (*Channel, *Respo
 
 // CreateGroupChannel creates a group message channel based on userIds provided.
 func (c *Client4) CreateGroupChannel(userIds []string) (*Channel, *Response) {
-	r, err := c.DoApiPost(c.GetChannelsRoute()+"/group", ArrayToJson(userIds))
+	type channelData struct {
+		userIds       []string
+		tankerGroupId string
+	}
+
+	json, _ := json.Marshal(channelData{
+		userIds:       userIds,
+		tankerGroupId: "",
+	})
+	r, err := c.DoApiPost(c.GetChannelsRoute()+"/group", string(json))
 	if err != nil {
 		return nil, BuildErrorResponse(r, err)
 	}

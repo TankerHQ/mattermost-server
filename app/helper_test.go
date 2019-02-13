@@ -247,7 +247,7 @@ func (me *TestHelper) CreateGroupChannel(user1 *model.User, user2 *model.User) *
 	utils.DisableDebugLogForTest()
 	var err *model.AppError
 	var channel *model.Channel
-	if channel, err = me.App.CreateGroupChannel([]string{me.BasicUser.Id, user1.Id, user2.Id}, me.BasicUser.Id); err != nil {
+	if channel, err = me.App.CreateGroupChannel([]string{me.BasicUser.Id, user1.Id, user2.Id}, "", me.BasicUser.Id); err != nil {
 		mlog.Error(err.Error())
 
 		time.Sleep(time.Second)

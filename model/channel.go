@@ -50,6 +50,7 @@ type Channel struct {
 	ExtraUpdateAt int64                  `json:"extra_update_at"`
 	CreatorId     string                 `json:"creator_id"`
 	SchemeId      *string                `json:"scheme_id"`
+	TankerGroupId string                 `json:"tanker_group_id"`
 	Props         map[string]interface{} `json:"props" db:"-"`
 }
 
