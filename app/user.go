@@ -1136,35 +1136,40 @@ func (a *App) UpdatePasswordSendEmail(user *model.User, newPassword, method stri
 	return nil
 }
 
-func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string) *model.AppError {
+func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string) (*model.UserToken, *model.AppError) {
 	token, err := a.GetPasswordRecoveryToken(userSuppliedTokenString)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if model.GetMillis()-token.CreateAt >= PASSWORD_RECOVER_EXPIRY_TIME {
-		return model.NewAppError("resetPassword", "api.user.reset_password.link_expired.app_error", nil, "", http.StatusBadRequest)
+		return nil, model.NewAppError("resetPassword", "api.user.reset_password.link_expired.app_error", nil, "", http.StatusBadRequest)
 	}
 
 	user, err := a.GetUser(token.Extra)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if user.IsSSOUser() {
-		return model.NewAppError("ResetPasswordFromCode", "api.user.reset_password.sso.app_error", nil, "userId="+user.Id, http.StatusBadRequest)
+		return nil, model.NewAppError("ResetPasswordFromCode", "api.user.reset_password.sso.app_error", nil, "userId="+user.Id, http.StatusBadRequest)
 	}
 
 	T := utils.GetUserTranslations(user.Locale)
 
+	userToken, err1 := a.GetUserToken(user.Id)
+	if err1 != nil {
+		return nil, model.NewAppError("UpdatePassword", "api.user.update_password.failed.app_error", nil, err1.Error(), http.StatusInternalServerError)
+	}
+
 	if err := a.UpdatePasswordSendEmail(user, newPassword, T("api.user.reset_password.method")); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := a.DeleteToken(token); err != nil {
 		mlog.Error(err.Error())
 	}
 
-	return nil
+	return userToken, nil
 }
 
 func (a *App) SendPasswordReset(email string, siteURL string) (bool, *model.AppError) {
