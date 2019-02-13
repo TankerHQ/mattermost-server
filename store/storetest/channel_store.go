@@ -217,7 +217,7 @@ func testChannelStoreCreateDirectChannel(t *testing.T, ss store.Store) {
 	store.Must(ss.User().Save(u2))
 	store.Must(ss.Team().SaveMember(&model.TeamMember{TeamId: model.NewId(), UserId: u2.Id}, -1))
 
-	res := <-ss.Channel().CreateDirectChannel(u1.Id, u2.Id)
+	res := <-ss.Channel().CreateDirectChannel(u1.Id, u2.Id, "")
 	if res.Err != nil {
 		t.Fatal("couldn't create direct channel", res.Err)
 	}
@@ -1080,7 +1080,7 @@ func testChannelStoreGetAllChannels(t *testing.T, ss store.Store, s SqlSupplier)
 	c3.Type = model.CHANNEL_PRIVATE
 	store.Must(ss.Channel().Save(&c3, -1))
 
-	store.Must(ss.Channel().CreateDirectChannel(model.NewId(), model.NewId()))
+	store.Must(ss.Channel().CreateDirectChannel(model.NewId(), model.NewId(), ""))
 
 	userIds := []string{model.NewId(), model.NewId(), model.NewId()}
 
@@ -2472,8 +2472,8 @@ func testChannelStoreAutocompleteInTeamForSearch(t *testing.T, ss store.Store, s
 	o5.Type = model.CHANNEL_PRIVATE
 	store.Must(ss.Channel().Save(&o5, -1))
 
-	store.Must(ss.Channel().CreateDirectChannel(u1.Id, u2.Id))
-	store.Must(ss.Channel().CreateDirectChannel(u2.Id, u3.Id))
+	store.Must(ss.Channel().CreateDirectChannel(u1.Id, u2.Id, ""))
+	store.Must(ss.Channel().CreateDirectChannel(u2.Id, u3.Id, ""))
 
 	tt := []struct {
 		name            string
@@ -2580,7 +2580,7 @@ func testChannelStoreAnalyticsDeletedTypeCount(t *testing.T, ss store.Store) {
 	store.Must(ss.User().Save(u2))
 
 	var d4 *model.Channel
-	if result := <-ss.Channel().CreateDirectChannel(u1.Id, u2.Id); result.Err != nil {
+	if result := <-ss.Channel().CreateDirectChannel(u1.Id, u2.Id, ""); result.Err != nil {
 		t.Fatalf(result.Err.Error())
 	} else {
 		d4 = result.Data.(*model.Channel)

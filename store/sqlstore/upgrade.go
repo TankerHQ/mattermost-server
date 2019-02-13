@@ -21,7 +21,9 @@ import (
 const (
 	VERSION_5_11_0           = "5.11.0"
 	VERSION_5_10_0           = "5.10.0"
+	VERSION_5_9_1            = "5.9.1"
 	VERSION_5_9_0            = "5.9.0"
+	VERSION_5_8_1            = "5.8.1"
 	VERSION_5_8_0            = "5.8.0"
 	VERSION_5_7_0            = "5.7.0"
 	VERSION_5_6_0            = "5.6.0"
@@ -102,6 +104,7 @@ func UpgradeDatabase(sqlStore SqlStore) {
 	UpgradeDatabaseToVersion56(sqlStore)
 	UpgradeDatabaseToVersion57(sqlStore)
 	UpgradeDatabaseToVersion58(sqlStore)
+	UpgradeDatabaseToVersion581(sqlStore)
 	UpgradeDatabaseToVersion59(sqlStore)
 	UpgradeDatabaseToVersion510(sqlStore)
 	UpgradeDatabaseToVersion511(sqlStore)
@@ -608,8 +611,15 @@ func UpgradeDatabaseToVersion58(sqlStore SqlStore) {
 	}
 }
 
+func UpgradeDatabaseToVersion581(sqlStore SqlStore) {
+	if shouldPerformUpgrade(sqlStore, VERSION_5_8_0, VERSION_5_8_1) {
+		sqlStore.CreateColumnIfNotExists("Channels", "TankerGroupId", "varchar(64)", "varchar(64)", "")
+		saveSchemaVersion(sqlStore, VERSION_5_8_1)
+	}
+}
+
 func UpgradeDatabaseToVersion59(sqlStore SqlStore) {
-	if shouldPerformUpgrade(sqlStore, VERSION_5_8_0, VERSION_5_9_0) {
+	if shouldPerformUpgrade(sqlStore, VERSION_5_8_1, VERSION_5_9_0) {
 		saveSchemaVersion(sqlStore, VERSION_5_9_0)
 	}
 }

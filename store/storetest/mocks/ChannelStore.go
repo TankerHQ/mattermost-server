@@ -99,7 +99,7 @@ func (_m *ChannelStore) ClearCaches() {
 }
 
 // CreateDirectChannel provides a mock function with given fields: userId, otherUserId
-func (_m *ChannelStore) CreateDirectChannel(userId string, otherUserId string) store.StoreChannel {
+func (_m *ChannelStore) CreateDirectChannel(userId string, otherUserId string, tankerGroupId string) store.StoreChannel {
 	ret := _m.Called(userId, otherUserId)
 
 	var r0 store.StoreChannel

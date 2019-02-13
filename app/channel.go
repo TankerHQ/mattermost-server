@@ -262,11 +262,11 @@ func (a *App) CreateChannel(channel *model.Channel, addMember bool) (*model.Chan
 	return sc, nil
 }
 
-func (a *App) GetOrCreateDirectChannel(userId, otherUserId string) (*model.Channel, *model.AppError) {
+func (a *App) GetOrCreateDirectChannel(userId, otherUserId, tankerGroupId string) (*model.Channel, *model.AppError) {
 	result := <-a.Srv.Store.Channel().GetByName("", model.GetDMNameFromIds(userId, otherUserId), true)
 	if result.Err != nil {
 		if result.Err.Id == store.MISSING_CHANNEL_ERROR {
-			channel, err := a.createDirectChannel(userId, otherUserId)
+			channel, err := a.createDirectChannel(userId, otherUserId, tankerGroupId)
 			if err != nil {
 				if err.Id == store.CHANNEL_EXISTS_ERROR {
 					return channel, nil
@@ -311,7 +311,7 @@ func (a *App) GetOrCreateDirectChannel(userId, otherUserId string) (*model.Chann
 	return result.Data.(*model.Channel), nil
 }
 
-func (a *App) createDirectChannel(userId string, otherUserId string) (*model.Channel, *model.AppError) {
+func (a *App) createDirectChannel(userId string, otherUserId string, tankerGroupId string) (*model.Channel, *model.AppError) {
 	uc1 := a.Srv.Store.User().Get(userId)
 	uc2 := a.Srv.Store.User().Get(otherUserId)
 
@@ -323,7 +323,7 @@ func (a *App) createDirectChannel(userId string, otherUserId string) (*model.Cha
 		return nil, model.NewAppError("CreateDirectChannel", "api.channel.create_direct_channel.invalid_user.app_error", nil, otherUserId, http.StatusBadRequest)
 	}
 
-	result := <-a.Srv.Store.Channel().CreateDirectChannel(userId, otherUserId)
+	result := <-a.Srv.Store.Channel().CreateDirectChannel(userId, otherUserId, tankerGroupId)
 	if result.Err != nil {
 		if result.Err.Id == store.CHANNEL_EXISTS_ERROR {
 			return result.Data.(*model.Channel), result.Err
@@ -370,8 +370,8 @@ func (a *App) WaitForChannelMembership(channelId string, userId string) {
 	mlog.Error(fmt.Sprintf("WaitForChannelMembership giving up channelId=%v userId=%v", channelId, userId), mlog.String("user_id", userId))
 }
 
-func (a *App) CreateGroupChannel(userIds []string, creatorId string) (*model.Channel, *model.AppError) {
-	channel, err := a.createGroupChannel(userIds, creatorId)
+func (a *App) CreateGroupChannel(userIds []string, tankerGroupId string, creatorId string) (*model.Channel, *model.AppError) {
+	channel, err := a.createGroupChannel(userIds, tankerGroupId, creatorId)
 	if err != nil {
 		if err.Id == store.CHANNEL_EXISTS_ERROR {
 			return channel, nil
@@ -405,7 +405,7 @@ func (a *App) CreateGroupChannel(userIds []string, creatorId string) (*model.Cha
 	return channel, nil
 }
 
-func (a *App) createGroupChannel(userIds []string, creatorId string) (*model.Channel, *model.AppError) {
+func (a *App) createGroupChannel(userIds []string, tankerGroupId string, creatorId string) (*model.Channel, *model.AppError) {
 	if len(userIds) > model.CHANNEL_GROUP_MAX_USERS || len(userIds) < model.CHANNEL_GROUP_MIN_USERS {
 		return nil, model.NewAppError("CreateGroupChannel", "api.channel.create_group.bad_size.app_error", nil, "", http.StatusBadRequest)
 	}
@@ -421,9 +421,10 @@ func (a *App) createGroupChannel(userIds []string, creatorId string) (*model.Cha
 	}
 
 	group := &model.Channel{
-		Name:        model.GetGroupNameFromUserIds(userIds),
-		DisplayName: model.GetGroupDisplayNameFromUsers(users, true),
-		Type:        model.CHANNEL_GROUP,
+		Name:          model.GetGroupNameFromUserIds(userIds),
+		DisplayName:   model.GetGroupDisplayNameFromUsers(users, true),
+		Type:          model.CHANNEL_GROUP,
+		TankerGroupId: tankerGroupId,
 	}
 
 	result = <-a.Srv.Store.Channel().Save(group, *a.Config().TeamSettings.MaxChannelsPerTeam)

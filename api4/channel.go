@@ -4,6 +4,7 @@
 package api4
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/mattermost/mattermost-server/mlog"
@@ -160,6 +161,10 @@ func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		oldChannel.Type = channel.Type
 	}
 
+	if len(channel.TankerGroupId) > 0 {
+		oldChannel.TankerGroupId = channel.TankerGroupId
+	}
+
 	if _, err := c.App.UpdateChannel(oldChannel); err != nil {
 		c.Err = err
 		return
@@ -309,16 +314,25 @@ func restoreChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 
 }
 
+type channelData struct {
+	UserIds       []string `json:"user_ids"`
+	TankerGroupId string   `json:"tanker_group_id"`
+}
+
 func createDirectChannel(c *Context, w http.ResponseWriter, r *http.Request) {
-	userIds := model.ArrayFromJson(r.Body)
+	var data *channelData
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		c.SetInvalidParam("body")
+		return
+	}
 	allowed := false
 
-	if len(userIds) != 2 {
+	if len(data.UserIds) != 2 {
 		c.SetInvalidParam("user_ids")
 		return
 	}
 
-	for _, id := range userIds {
+	for _, id := range data.UserIds {
 		if len(id) != 26 {
 			c.SetInvalidParam("user_id")
 			return
@@ -338,7 +352,7 @@ func createDirectChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sc, err := c.App.GetOrCreateDirectChannel(userIds[0], userIds[1])
+	sc, err := c.App.GetOrCreateDirectChannel(data.UserIds[0], data.UserIds[1], data.TankerGroupId)
 	if err != nil {
 		c.Err = err
 		return
@@ -349,15 +363,19 @@ func createDirectChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
-	userIds := model.ArrayFromJson(r.Body)
+	var data *channelData
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		c.SetInvalidParam("body")
+		return
+	}
 
-	if len(userIds) == 0 {
+	if len(data.UserIds) == 0 {
 		c.SetInvalidParam("user_ids")
 		return
 	}
 
 	found := false
-	for _, id := range userIds {
+	for _, id := range data.UserIds {
 		if len(id) != 26 {
 			c.SetInvalidParam("user_id")
 			return
@@ -368,7 +386,7 @@ func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !found {
-		userIds = append(userIds, c.App.Session.UserId)
+		data.UserIds = append(data.UserIds, c.App.Session.UserId)
 	}
 
 	if !c.App.SessionHasPermissionTo(c.App.Session, model.PERMISSION_CREATE_GROUP_CHANNEL) {
@@ -376,7 +394,7 @@ func createGroupChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupChannel, err := c.App.CreateGroupChannel(userIds, c.App.Session.UserId)
+	groupChannel, err := c.App.CreateGroupChannel(data.UserIds, data.TankerGroupId, c.App.Session.UserId)
 	if err != nil {
 		c.Err = err
 		return

@@ -285,6 +285,7 @@ func NewSqlChannelStore(sqlStore SqlStore, metrics einterfaces.MetricsInterface)
 		table.ColMap("Purpose").SetMaxSize(250)
 		table.ColMap("CreatorId").SetMaxSize(26)
 		table.ColMap("SchemeId").SetMaxSize(26)
+		table.ColMap("TankerGroupId").SetMaxSize(64)
 
 		tablem := db.AddTableWithName(channelMember{}, "ChannelMembers").SetKeys(false, "ChannelId", "UserId")
 		tablem.ColMap("ChannelId").SetMaxSize(26)
@@ -455,7 +456,7 @@ func (s SqlChannelStore) Save(channel *model.Channel, maxChannelsPerTeam int64) 
 	})
 }
 
-func (s SqlChannelStore) CreateDirectChannel(userId string, otherUserId string) store.StoreChannel {
+func (s SqlChannelStore) CreateDirectChannel(userId string, otherUserId string, tankerGroupId string) store.StoreChannel {
 	channel := new(model.Channel)
 
 	channel.DisplayName = ""
@@ -463,6 +464,7 @@ func (s SqlChannelStore) CreateDirectChannel(userId string, otherUserId string) 
 
 	channel.Header = ""
 	channel.Type = model.CHANNEL_DIRECT
+	channel.TankerGroupId = tankerGroupId
 
 	cm1 := &model.ChannelMember{
 		UserId:      userId,
