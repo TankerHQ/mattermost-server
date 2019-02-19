@@ -348,6 +348,9 @@ func (me *TestHelper) CreatePostWithClient(client *model.Client4, channel *model
 	post := &model.Post{
 		ChannelId: channel.Id,
 		Message:   "message_" + id,
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
 	}
 
 	utils.DisableDebugLogForTest()
@@ -366,6 +369,9 @@ func (me *TestHelper) CreatePinnedPostWithClient(client *model.Client4, channel 
 		ChannelId: channel.Id,
 		Message:   "message_" + id,
 		IsPinned:  true,
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
 	}
 
 	utils.DisableDebugLogForTest()
@@ -381,6 +387,9 @@ func (me *TestHelper) CreateMessagePostWithClient(client *model.Client4, channel
 	post := &model.Post{
 		ChannelId: channel.Id,
 		Message:   message,
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
 	}
 
 	utils.DisableDebugLogForTest()
@@ -398,6 +407,9 @@ func (me *TestHelper) CreateMessagePostNoClient(channel *model.Channel, message 
 		ChannelId: channel.Id,
 		Message:   message,
 		CreateAt:  createAtTime,
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
 	})).(*model.Post)
 
 	return post
