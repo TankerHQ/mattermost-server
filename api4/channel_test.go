@@ -909,7 +909,13 @@ func TestDeleteChannel(t *testing.T) {
 		t.Fatal("should have failed to get deleted channel")
 	}
 
-	post1 := &model.Post{ChannelId: publicChannel1.Id, Message: "a" + GenerateTestId() + "a"}
+	post1 := &model.Post{
+		ChannelId: publicChannel1.Id,
+		Message:   "a" + GenerateTestId() + "a",
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
+	}
 	if _, err := Client.CreatePost(post1); err == nil {
 		t.Fatal("should have failed to post to deleted channel")
 	}
@@ -1890,7 +1896,13 @@ func TestAddChannelMember(t *testing.T) {
 		t.Fatal("should have returned exact user added to private channel")
 	}
 
-	post := &model.Post{ChannelId: publicChannel.Id, Message: "a" + GenerateTestId() + "a"}
+	post := &model.Post{
+		ChannelId: publicChannel.Id,
+		Message:   "a" + GenerateTestId() + "a",
+		Props: model.StringInterface{
+			"encrypted": true,
+		},
+	}
 	rpost, err := Client.CreatePost(post)
 	if err == nil {
 		t.Fatal("should have created a post")

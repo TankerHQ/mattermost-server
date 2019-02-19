@@ -142,6 +142,16 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 		return foundPost, nil
 	}
 
+	if value, ok := post.Props["encrypted"]; ok {
+		if isEncrypted, isBool := value.(bool); isBool && !isEncrypted {
+			err := model.NewAppError("createPost", "api.post.create_post.message_not_encrypted.error", nil, "", http.StatusBadRequest)
+			return nil, err
+		}
+	} else {
+		err := model.NewAppError("createPost", "api.post.create_post.message_not_encrypted.error", nil, "", http.StatusBadRequest)
+		return nil, err
+	}
+
 	// If we get this far, we've recorded the client-provided pending post id to the cache.
 	// Remove it if we fail below, allowing a proper retry by the client.
 	defer func() {
