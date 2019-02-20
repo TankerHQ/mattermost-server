@@ -878,17 +878,17 @@ func (a *App) DoUploadFileExpectModification(now time.Time, rawTeamId string, ra
 	pathPrefix := now.Format("20060102") + "/teams/" + teamId + "/channels/" + channelId + "/users/" + userId + "/" + info.Id + "/"
 	info.Path = pathPrefix + filename
 
-	if info.IsImage() {
-		// Check dimensions before loading the whole thing into memory later on
-		if info.Width*info.Height > MaxImageSize {
-			err := model.NewAppError("uploadFile", "api.file.upload_file.large_image.app_error", map[string]interface{}{"Filename": filename}, "", http.StatusBadRequest)
-			return nil, data, err
-		}
+	// if info.IsImage() {
+	// 	// Check dimensions before loading the whole thing into memory later on
+	// 	if info.Width*info.Height > MaxImageSize {
+	// 		err := model.NewAppError("uploadFile", "api.file.upload_file.large_image.app_error", map[string]interface{}{"Filename": filename}, "", http.StatusBadRequest)
+	// 		return nil, data, err
+	// 	}
 
-		nameWithoutExtension := filename[:strings.LastIndex(filename, ".")]
-		info.PreviewPath = pathPrefix + nameWithoutExtension + "_preview.jpg"
-		info.ThumbnailPath = pathPrefix + nameWithoutExtension + "_thumb.jpg"
-	}
+	// 	nameWithoutExtension := filename[:strings.LastIndex(filename, ".")]
+	// 	info.PreviewPath = pathPrefix + nameWithoutExtension + "_preview.jpg"
+	// 	info.ThumbnailPath = pathPrefix + nameWithoutExtension + "_thumb.jpg"
+	// }
 
 	if pluginsEnvironment := a.GetPluginsEnvironment(); pluginsEnvironment != nil {
 		var rejectionError *model.AppError
