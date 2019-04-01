@@ -6,6 +6,7 @@ package api4
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -756,13 +757,13 @@ func inviteUsersToTeam(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := c.App.InviteNewUsersToTeam(emailList, c.Params.TeamId, c.App.Session.UserId)
+	res, err := c.App.InviteNewUsersToTeam(emailList, c.Params.TeamId, c.App.Session.UserId)
 	if err != nil {
 		c.Err = err
 		return
 	}
-
-	ReturnStatusOK(w)
+	result, _ := json.Marshal(res)
+	w.Write([]byte(result))
 }
 
 func getInviteInfo(c *Context, w http.ResponseWriter, r *http.Request) {

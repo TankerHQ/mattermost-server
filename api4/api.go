@@ -73,7 +73,8 @@ type Routes struct {
 	OAuthApps *mux.Router // 'api/v4/oauth/apps'
 	OAuthApp  *mux.Router // 'api/v4/oauth/apps/{app_id:[A-Za-z0-9]+}'
 
-	TankerIdentity *mux.Router // 'api/v4/tankeridentity'
+	TankerIdentity         *mux.Router // 'api/v4/tankeridentity'
+	TankerPublicIdentities *mux.Router // 'api/v4/tankerpublicidentity'
 
 	OpenGraph *mux.Router // 'api/v4/opengraph'
 
@@ -188,6 +189,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.OAuthApp = api.BaseRoutes.OAuthApps.PathPrefix("/{app_id:[A-Za-z0-9]+}").Subrouter()
 
 	api.BaseRoutes.TankerIdentity = api.BaseRoutes.ApiRoot.PathPrefix("/tankeridentity").Subrouter()
+	api.BaseRoutes.TankerPublicIdentities = api.BaseRoutes.ApiRoot.PathPrefix("/tankerpublicidentities").Subrouter()
 
 	api.BaseRoutes.Compliance = api.BaseRoutes.ApiRoot.PathPrefix("/compliance").Subrouter()
 	api.BaseRoutes.Cluster = api.BaseRoutes.ApiRoot.PathPrefix("/cluster").Subrouter()

@@ -4,6 +4,7 @@
 package api4
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -1099,15 +1100,16 @@ func resetPassword(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	c.LogAudit("attempt - token=" + token)
 
-	userToken, err := c.App.ResetPasswordFromToken(token, newPassword)
+	tankerIdentity, err := c.App.ResetPasswordFromToken(token, newPassword)
 	if err != nil {
 		c.LogAudit("fail - token=" + token)
 		c.Err = err
 		return
 	}
+	result, _ := json.Marshal(*tankerIdentity)
 
 	c.LogAudit("success - token=" + token)
-	w.Write([]byte(userToken.ToJson()))
+	w.Write([]byte(result))
 }
 
 func sendPasswordReset(c *Context, w http.ResponseWriter, r *http.Request) {

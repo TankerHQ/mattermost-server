@@ -106,6 +106,7 @@ func UpgradeDatabase(sqlStore SqlStore) {
 	UpgradeDatabaseToVersion58(sqlStore)
 	UpgradeDatabaseToVersion581(sqlStore)
 	UpgradeDatabaseToVersion59(sqlStore)
+	UpgradeDatabaseToVersion591(sqlStore)
 	UpgradeDatabaseToVersion510(sqlStore)
 	UpgradeDatabaseToVersion511(sqlStore)
 
@@ -624,8 +625,15 @@ func UpgradeDatabaseToVersion59(sqlStore SqlStore) {
 	}
 }
 
+func UpgradeDatabaseToVersion591(sqlStore SqlStore) {
+	if shouldPerformUpgrade(sqlStore, VERSION_5_9_0, VERSION_5_9_1) {
+		sqlStore.AlterColumnTypeIfExists("Tokens", "Extra", "varchar(1024)", "varchar(1024)")
+		saveSchemaVersion(sqlStore, VERSION_5_9_1)
+	}
+}
+
 func UpgradeDatabaseToVersion510(sqlStore SqlStore) {
-	if shouldPerformUpgrade(sqlStore, VERSION_5_9_0, VERSION_5_10_0) {
+	if shouldPerformUpgrade(sqlStore, VERSION_5_9_1, VERSION_5_10_0) {
 
 		// Grant new bot permissions to the system admin. Ideally we'd use the RoleStore directly,
 		// but it uses the new supplier model, which isn't initialized in the UpgradeDatabase code

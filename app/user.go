@@ -75,6 +75,8 @@ func (a *App) CreateUserWithToken(user *model.User, tokenId string) (*model.User
 
 	user.Email = tokenData["email"]
 	user.EmailVerified = true
+	user.Props = make(map[string]string)
+	user.Props["provisionalidentity"] = tokenData["provisionalIdentity"]
 
 	ruser, err := a.CreateUser(user)
 	if err != nil {
@@ -1232,7 +1234,7 @@ func (a *App) UpdatePasswordSendEmail(user *model.User, newPassword, method stri
 	return nil
 }
 
-func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string) (*model.UserToken, *model.AppError) {
+func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string) (*TankerIdentities, *model.AppError) {
 	token, err := a.GetPasswordRecoveryToken(userSuppliedTokenString)
 	if err != nil {
 		return nil, err
@@ -1266,7 +1268,7 @@ func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string
 
 	T := utils.GetUserTranslations(user.Locale)
 
-	userToken, err1 := a.GetUserToken(user.Id)
+	res, err1 := a.GetTankerIdentity(user.Id)
 	if err1 != nil {
 		return nil, model.NewAppError("UpdatePassword", "api.user.update_password.failed.app_error", nil, err1.Error(), http.StatusInternalServerError)
 	}
@@ -1279,7 +1281,7 @@ func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string
 		mlog.Error(err.Error())
 	}
 
-	return userToken, nil
+	return res, nil
 }
 
 func (a *App) SendPasswordReset(email string, siteURL string) (bool, *model.AppError) {

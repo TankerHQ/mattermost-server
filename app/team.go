@@ -914,14 +914,14 @@ func (a *App) postRemoveFromTeamMessage(user *model.User, channel *model.Channel
 	return nil
 }
 
-func (a *App) InviteNewUsersToTeam(emailList []string, teamId, senderId string) *model.AppError {
+func (a *App) InviteNewUsersToTeam(emailList []string, teamId, senderId string) ([]string, *model.AppError) {
 	if !*a.Config().ServiceSettings.EnableEmailInvitations {
-		return model.NewAppError("InviteNewUsersToTeam", "api.team.invite_members.disabled.app_error", nil, "", http.StatusNotImplemented)
+		return nil, model.NewAppError("InviteNewUsersToTeam", "api.team.invite_members.disabled.app_error", nil, "", http.StatusNotImplemented)
 	}
 
 	if len(emailList) == 0 {
 		err := model.NewAppError("InviteNewUsersToTeam", "api.team.invite_members.no_one.app_error", nil, "", http.StatusBadRequest)
-		return err
+		return nil, err
 	}
 
 	tchan := a.Srv.Store.Team().Get(teamId)
@@ -929,13 +929,13 @@ func (a *App) InviteNewUsersToTeam(emailList []string, teamId, senderId string) 
 
 	result := <-tchan
 	if result.Err != nil {
-		return result.Err
+		return nil, result.Err
 	}
 	team := result.Data.(*model.Team)
 
 	result = <-uchan
 	if result.Err != nil {
-		return result.Err
+		return nil, result.Err
 	}
 	user := result.Data.(*model.User)
 
@@ -950,13 +950,13 @@ func (a *App) InviteNewUsersToTeam(emailList []string, teamId, senderId string) 
 	if len(invalidEmailList) > 0 {
 		s := strings.Join(invalidEmailList, ", ")
 		err := model.NewAppError("InviteNewUsersToTeam", "api.team.invite_members.invalid_email.app_error", map[string]interface{}{"Addresses": s}, "", http.StatusBadRequest)
-		return err
+		return nil, err
 	}
 
 	nameFormat := *a.Config().TeamSettings.TeammateNameDisplay
-	a.SendInviteEmails(team, user.GetDisplayName(nameFormat), user.Id, emailList, a.GetSiteURL())
+	res := a.SendInviteEmails(team, user.GetDisplayName(nameFormat), user.Id, emailList, a.GetSiteURL())
 
-	return nil
+	return res, nil
 }
 
 func (a *App) FindTeamByName(name string) bool {

@@ -14,6 +14,7 @@ import (
 func (api *API) InitTankerIdentity() {
 	l4g.Debug("Initializing tankerIdentity api")
 	api.BaseRoutes.TankerIdentity.Handle("", api.ApiSessionRequired(getTankerIdentity)).Methods("GET")
+	api.BaseRoutes.TankerPublicIdentities.Handle("", api.ApiSessionRequired(getTankerPublicIdentities)).Methods("POST")
 }
 
 func getTankerIdentity(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -24,5 +25,24 @@ func getTankerIdentity(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, _ := json.Marshal(*tankerIdentity)
+	w.Write([]byte(res))
+}
+
+func getTankerPublicIdentities(c *Context, w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var userIDs []string
+	err := decoder.Decode(&userIDs)
+	if err != nil {
+		c.SetInvalidParam("body")
+		return
+	}
+	tankerIdentities, err := c.App.GetTankerPublicIdentities(userIDs)
+
+	if err != nil {
+		c.Err = model.NewAppError("TankerPublicIdentities", "api.tankerpublicidentities.cannot_generate.app_error", nil, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res, _ := json.Marshal(tankerIdentities)
 	w.Write([]byte(res))
 }

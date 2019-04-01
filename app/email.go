@@ -242,7 +242,7 @@ func (a *App) SendUserAccessTokenAddedEmail(email, locale, siteURL string) *mode
 	return nil
 }
 
-func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, siteURL string) (bool, *model.AppError) {
+func (a *App) SendEmailWithTanker(subject string, email string, toName string, bodyPage *utils.HTMLTemplate) *model.AppError {
 	type data2 struct {
 		Subject   string `json:"subject"`
 		HTML      string `json:"html"`
@@ -256,12 +256,52 @@ func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, s
 		Token string `json:"token"`
 	}
 	type data1 struct {
-		UserID       string `json:"user_id"`
 		TrustchainID string `json:"trustchain_id"`
 		Email        data2  `json:"email"`
 		Auth         data3  `json:"auth"`
 	}
 
+	tankerConfig := a.Config().TankerSettings
+
+	htmlBody := bodyPage.Render()
+	txtBody, err := html2text.FromString(htmlBody)
+	if err != nil {
+		return model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
+	}
+
+	body := data1{
+		TrustchainID: tankerConfig.TrustchainId,
+		Email: data2{
+			Subject:   subject,
+			HTML:      htmlBody,
+			Text:      txtBody,
+			FromEmail: "noreply@mattermost.tanker.io",
+			FromName:  "Tanker Mattermost",
+			ToEmail:   email,
+			ToName:    toName,
+		},
+		Auth: data3{
+			Token: tankerConfig.TrustchainEmailAuthToken,
+		},
+	}
+
+	req, _ := json.Marshal(body)
+
+	resp, err := http.Post("https://api.tanker.io/emailVerification/send", "application/json", bytes.NewReader(req))
+	if err != nil {
+		return model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
+	}
+	if resp.StatusCode != 200 {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		log.Println(resp.StatusCode)
+		log.Println(bodyString)
+		return model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+bodyString, http.StatusInternalServerError)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, siteURL string) (bool, *model.AppError) {
 	user, err1 := a.GetUserByEmail(email)
 	if err1 != nil {
 		return false, err1
@@ -269,7 +309,7 @@ func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, s
 
 	T := utils.GetUserTranslations(locale)
 
-	link := fmt.Sprintf("%s/reset_password_complete?token=%s&validation=%s", siteURL, url.QueryEscape(token.Token), "TANKER_VERIFICATION_CODE")
+	link := fmt.Sprintf("%s/reset_password_complete?email=%s&token=%s&validation=%s", siteURL, url.QueryEscape(email), url.QueryEscape(token.Token), "TANKER_VERIFICATION_CODE")
 
 	bodyPage := a.NewEmailTemplate("reset_body", locale)
 	bodyPage.Props["SiteURL"] = siteURL
@@ -279,53 +319,12 @@ func (a *App) SendPasswordResetEmail(email string, token *model.Token, locale, s
 	bodyPage.Props["ResetUrl"] = template.HTML(link)
 	bodyPage.Props["Button"] = T("api.templates.reset_body.button")
 
-	htmlBody := bodyPage.Render()
-	txtBody, err := html2text.FromString(htmlBody)
-	if err != nil {
-		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
-	}
-
 	subject := T("api.templates.reset_subject",
 		map[string]interface{}{"SiteName": a.ClientConfig()["SiteName"]})
 
-	tankerConfig := a.Config().TankerSettings
-
-	body := data1{
-		UserID:       user.Id,
-		TrustchainID: tankerConfig.TrustchainId,
-		Email: data2{
-			Subject:   subject,
-			HTML:      htmlBody,
-			Text:      txtBody,
-			FromEmail: "noreply@mattermost.tanker.io",
-			FromName:  "Tanker Mattermost",
-			ToEmail:   email,
-			ToName:    user.Username,
-		},
-		Auth: data3{
-			Token: tankerConfig.TrustchainEmailAuthToken,
-		},
-	}
-
-	req, err := json.Marshal(body)
-	log.Println(string(req))
-
-	if err1 != nil {
-		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
-	}
-
-	resp, err := http.Post("https://api.tanker.io/unlock/sendVerification", "application/json", bytes.NewReader(req))
+	err := a.SendEmailWithTanker(subject, email, user.Username, bodyPage)
 	if err != nil {
-		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		log.Println(resp.StatusCode)
-		log.Println(bodyString)
-		return false, model.NewAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+bodyString, http.StatusInternalServerError)
+		return false, err
 	}
 	return true, nil
 }
@@ -355,15 +354,15 @@ func (a *App) SendMfaChangeEmail(email string, activated bool, locale, siteURL s
 	return nil
 }
 
-func (a *App) SendInviteEmails(team *model.Team, senderName string, senderUserId string, invites []string, siteURL string) {
+func (a *App) SendInviteEmails(team *model.Team, senderName string, senderUserId string, invites []string, siteURL string) []string {
 	if a.Srv.EmailRateLimiter == nil {
 		a.Log.Error("Email invite not sent, rate limiting could not be setup.", mlog.String("user_id", senderUserId), mlog.String("team_id", team.Id))
-		return
+		return nil
 	}
 	rateLimited, result, err := a.Srv.EmailRateLimiter.RateLimit(senderUserId, len(invites))
 	if err != nil {
 		a.Log.Error("Error rate limiting invite email.", mlog.String("user_id", senderUserId), mlog.String("team_id", team.Id), mlog.Err(err))
-		return
+		return nil
 	}
 
 	if rateLimited {
@@ -372,9 +371,10 @@ func (a *App) SendInviteEmails(team *model.Team, senderName string, senderUserId
 			mlog.String("team_id", team.Id),
 			mlog.String("retry_after", result.RetryAfter.String()),
 			mlog.Err(err))
-		return
+		return nil
 	}
 
+	publicProvisionalIDs := []string{}
 	for _, invite := range invites {
 		if len(invite) > 0 {
 			senderRole := utils.T("api.team.invite_members.member")
@@ -394,10 +394,12 @@ func (a *App) SendInviteEmails(team *model.Team, senderName string, senderUserId
 				map[string]interface{}{"TeamDisplayName": team.DisplayName})
 			bodyPage.Props["TeamURL"] = siteURL + "/" + team.Name
 
+			provisionalIdentity, publicProvisionalIdentity := a.GetTankerProvisionalIdentity(invite)
 			token := model.NewToken(
 				TOKEN_TYPE_TEAM_INVITATION,
-				model.MapToJson(map[string]string{"teamId": team.Id, "email": invite}),
+				model.MapToJson(map[string]string{"teamId": team.Id, "email": invite, "provisionalIdentity": provisionalIdentity}),
 			)
+			publicProvisionalIDs = append(publicProvisionalIDs, publicProvisionalIdentity)
 
 			props := make(map[string]string)
 			props["email"] = invite
@@ -409,17 +411,18 @@ func (a *App) SendInviteEmails(team *model.Team, senderName string, senderUserId
 				mlog.Error(fmt.Sprintf("Failed to send invite email successfully err=%v", result.Err))
 				continue
 			}
-			bodyPage.Props["Link"] = fmt.Sprintf("%s/signup_user_complete/?d=%s&t=%s", siteURL, url.QueryEscape(data), url.QueryEscape(token.Token))
+			bodyPage.Props["Link"] = fmt.Sprintf("%s/signup_user_complete/?d=%s&t=%s&v=%s", siteURL, url.QueryEscape(data), url.QueryEscape(token.Token), "TANKER_VERIFICATION_CODE")
 
 			if !*a.Config().EmailSettings.SendEmailNotifications {
 				mlog.Info(fmt.Sprintf("sending invitation to %v %v", invite, bodyPage.Props["Link"]))
 			}
 
-			if err := a.SendMail(invite, subject, bodyPage.Render()); err != nil {
+			if err := a.SendEmailWithTanker(subject, invite, team.DisplayName, bodyPage); err != nil {
 				mlog.Error(fmt.Sprintf("Failed to send invite email successfully err=%v", err))
 			}
 		}
 	}
+	return publicProvisionalIDs
 }
 
 func (a *App) NewEmailTemplate(name, locale string) *utils.HTMLTemplate {

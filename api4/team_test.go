@@ -2078,7 +2078,7 @@ func TestInviteUsersToTeam(t *testing.T) {
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.TeamSettings.RestrictCreationToDomains = "@global.com,@common.com" })
 
 	t.Run("restricted domains", func(t *testing.T) {
-		err := th.App.InviteNewUsersToTeam(emailList, th.BasicTeam.Id, th.BasicUser.Id)
+		_, err := th.App.InviteNewUsersToTeam(emailList, th.BasicTeam.Id, th.BasicUser.Id)
 
 		if err == nil {
 			t.Fatal("Adding users with non-restricted domains was allowed")
@@ -2101,17 +2101,17 @@ func TestInviteUsersToTeam(t *testing.T) {
 			t.Fatal("Should update the team")
 		}
 
-		if err := th.App.InviteNewUsersToTeam([]string{"test@global.com"}, th.BasicTeam.Id, th.BasicUser.Id); err == nil || err.Where != "InviteNewUsersToTeam" {
+		if _, err := th.App.InviteNewUsersToTeam([]string{"test@global.com"}, th.BasicTeam.Id, th.BasicUser.Id); err == nil || err.Where != "InviteNewUsersToTeam" {
 			t.Log(err)
 			t.Fatal("Per team restriction should take precedence over the global restriction")
 		}
 
-		if err := th.App.InviteNewUsersToTeam([]string{"test@common.com"}, th.BasicTeam.Id, th.BasicUser.Id); err != nil {
+		if _, err := th.App.InviteNewUsersToTeam([]string{"test@common.com"}, th.BasicTeam.Id, th.BasicUser.Id); err != nil {
 			t.Log(err)
 			t.Fatal("Failed to invite user which was common between team and global domain restriction")
 		}
 
-		if err := th.App.InviteNewUsersToTeam([]string{"test@invalid.com"}, th.BasicTeam.Id, th.BasicUser.Id); err == nil {
+		if _, err := th.App.InviteNewUsersToTeam([]string{"test@invalid.com"}, th.BasicTeam.Id, th.BasicUser.Id); err == nil {
 			t.Log(err)
 			t.Fatal("Should not invite user")
 		}
